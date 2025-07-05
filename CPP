@@ -1,0 +1,47 @@
+#include <iostream>
+#include <vector>
+using namespace std;
+
+bool search(vector<vector<char>>& grid, string& word, int i, int r, int c, vector<vector<bool>>& vis) {
+    if (i == word.size()) return true;
+    if (r < 0 || c < 0 || r >= grid.size() || c >= grid[0].size()) return false;
+    if (vis[r][c] || grid[r][c] != word[i]) return false;
+
+    vis[r][c] = true;
+    bool found = search(grid, word, i+1, r+1, c, vis) ||
+                 search(grid, word, i+1, r-1, c, vis) ||
+                 search(grid, word, i+1, r, c+1, vis) ||
+                 search(grid, word, i+1, r, c-1, vis);
+    vis[r][c] = false;
+    return found;
+}
+
+bool exists(vector<vector<char>>& grid, string word) {
+    int n = grid.size(), m = grid[0].size();
+    vector<vector<bool>> vis(n, vector<bool>(m, false));
+
+    for (int r = 0; r < n; ++r)
+        for (int c = 0; c < m; ++c)
+            if (search(grid, word, 0, r, c, vis))
+                return true;
+    return false;
+}
+
+int main() {
+    vector<vector<char>> grid = {
+        {'A','B','C','E'},
+        {'S','F','C','S'},
+        {'A','D','E','E'}
+    };
+
+    string word;
+    cout << "Word to search: ";
+    cin >> word;
+
+    if (exists(grid, word))
+        cout << "✅ Found!\n";
+    else
+        cout << "❌ Not found.\n";
+
+    return 0;
+}
