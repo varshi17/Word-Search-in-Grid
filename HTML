@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Word Search in Grid</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+      background: #f4f4f4;
+    }
+    h2 { margin-bottom: 1rem; }
+    textarea, input, button {
+      width: 300px;
+      padding: 0.7rem;
+      margin-top: 1rem;
+      font-size: 1rem;
+    }
+    button {
+      background: #333;
+      color: white;
+      border: none;
+    }
+    #res {
+      margin-top: 1.2rem;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Word Search in Grid</h2>
+
+  <textarea id="grid" rows="4" placeholder="A,B,C,E\nS,F,C,S\nA,D,E,E"></textarea>
+  <input type="text" id="word" placeholder="Enter word">
+  <button onclick="find()">Search</button>
+  <div id="res"></div>
+
+  <script>
+    function find() {
+      let rows = document.getElementById('grid').value.trim().split('\n');
+      let grid = rows.map(r => r.split(','));
+      let word = document.getElementById('word').value.trim().toUpperCase();
+      let n = grid.length, m = grid[0].length;
+      let vis = Array.from({length: n}, () => Array(m).fill(false));
+
+      function dfs(i, r, c) {
+        if (i == word.length) return true;
+        if (r < 0 || c < 0 || r >= n || c >= m || vis[r][c] || grid[r][c] != word[i]) return false;
+        vis[r][c] = true;
+        let ok = dfs(i+1,r+1,c)||dfs(i+1,r-1,c)||dfs(i+1,r,c+1)||dfs(i+1,r,c-1);
+        vis[r][c] = false;
+        return ok;
+      }
+
+      let found = false;
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < m; c++) {
+          if (dfs(0, r, c)) found = true;
+        }
+      }
+
+      document.getElementById('res').textContent = found ? "Found" : "Not found";
+    }
+  </script>
+
+</body>
+</html>
