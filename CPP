@@ -1,47 +1,197 @@
 #include <iostream>
 #include <vector>
+#include <string>
+#include <algorithm>
+#include <random>
+#include <ctime>
+#include <utility>
+
 using namespace std;
 
-bool search(vector<vector<char>>& grid, string& word, int i, int r, int c, vector<vector<bool>>& vis) {
-    if (i == word.size()) return true;
-    if (r < 0 || c < 0 || r >= grid.size() || c >= grid[0].size()) return false;
-    if (vis[r][c] || grid[r][c] != word[i]) return false;
+class WordSearch {
+private:
+    vector<vector<char>> board;
+    vector<string> words;
+    int rows, cols;
 
-    vis[r][c] = true;
-    bool found = search(grid, word, i+1, r+1, c, vis) ||
-                 search(grid, word, i+1, r-1, c, vis) ||
-                 search(grid, word, i+1, r, c+1, vis) ||
-                 search(grid, word, i+1, r, c-1, vis);
-    vis[r][c] = false;
-    return found;
-}
-
-bool exists(vector<vector<char>>& grid, string word) {
-    int n = grid.size(), m = grid[0].size();
-    vector<vector<bool>> vis(n, vector<bool>(m, false));
-
-    for (int r = 0; r < n; ++r)
-        for (int c = 0; c < m; ++c)
-            if (search(grid, word, 0, r, c, vis))
-                return true;
-    return false;
-}
-
-int main() {
-    vector<vector<char>> grid = {
-        {'A','B','C','E'},
-        {'S','F','C','S'},
-        {'A','D','E','E'}
+    // Directions: up, down, left, right, and 4 diagonals
+    const vector<pair<int, int>> directions = {
+        {-1, -1}, {-1, 0}, {-1, 1},
+        {0, -1},           {0, 1},
+        {1, -1},  {1, 0},  {1, 1}
     };
 
-    string word;
-    cout << "Word to search: ";
-    cin >> word;
+    // Check if word can be placed at position (i,j) in direction (di,dj)
+    bool canPlace(const string& word, int i, int j, int di, int dj) {
+        for (char c : word) {
+            if (i < 0 || i >= rows || j < 0 || j >= cols) return false;
+            if (board[i][j] != '.' && board[i][j] != c) return false;
+            i += di;
+            j += dj;
+        }
+        return true;
+    }
 
-    if (exists(grid, word))
-        cout << "✅ Found!\n";
-    else
-        cout << "❌ Not found.\n";
+    // Place the word at position (i,j) in direction (di,dj)
+    void placeWord(const string& word, int i, int j, int di, int dj) {
+        for (char c : word) {
+            board[i][j] = c;
+            i += di;
+            j += dj;
+        }
+    }
+
+    // Try to place a word in the board
+    bool tryPlaceWord(const string& word) {
+        // Shuffle directions for randomness
+        vector<pair<int, int>> shuffledDirs = directions;
+        shuffle(shuffledDirs.begin(), shuffledDirs.end(), mt19937(random_device()()));
+
+        for (auto [di, dj] : shuffledDirs) {
+            // Calculate boundaries for starting positions
+            int start_i = (di == 1) ? 0 : (di == -1) ? word.length() - 1 : 0;
+            int end_i = (di == 1) ? rows - word.length() : (di == -1) ? rows - 1 : rows - 1;
+            int start_j = (dj == 1) ? 0 : (dj == -1) ? word.length() - 1 : 0;
+            int end_j = (dj == 1) ? cols - word.length() : (dj == -1) ? cols - 1 : cols - 1;
+
+            if (start_i > end_i || start_j > end_j) continue;
+
+            // Try random positions
+            vector<pair<int, int>> positions;
+            for (int i = start_i; i <= end_i; i++) {
+                for (int j = start_j; j <= end_j; j++) {
+                    positions.emplace_back(i, j);
+                }
+            }
+            shuffle(positions.begin(), positions.end(), mt19937(random_device()()));
+
+            for (auto [i, j] : positions) {
+                if (canPlace(word, i, j, di, dj)) {
+                    placeWord(word, i, j, di, dj);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // Fill empty spaces with random letters
+    void fillEmptySpaces() {
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                if (board[i][j] == '.') {
+                    board[i][j] = 'A' + rand() % 26;
+                }
+            }
+        }
+    }
+
+public:
+    WordSearch(int r, int c) : rows(r), cols(c) {
+        board.resize(rows, vector<char>(cols, '.'));
+        srand(time(nullptr));
+    }
+
+    void addWord(const string& word) {
+        string upperWord;
+        for (char c : word) {
+            upperWord += toupper(c);
+        }
+        words.push_back(upperWord);
+    }
+
+    bool generate() {
+        // Sort words by length (longest first) for better placement
+        sort(words.begin(), words.end(), [](const string& a, const string& b) {
+            return a.length() > b.length();
+        });
+
+        for (const string& word : words) {
+            if (word.length() > max(rows, cols)) {
+                cerr << "Word '" << word << "' is too long for the grid." << endl;
+                return false;
+            }
+
+            if (!tryPlaceWord(word)) {
+                cerr << "Failed to place word: " << word << endl;
+                return false;
+            }
+        }
+
+        fillEmptySpaces();
+        return true;
+    }
+
+    void printBoard() const {
+        cout << "Generated Word Search (" << rows << "x" << cols << "):\n\n";
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                cout << board[i][j] << ' ';
+            }
+            cout << endl;
+        }
+        cout << "\nWords to find:\n";
+        for (const string& word : words) {
+            cout << "- " << word << endl;
+        }
+    }
+
+    // Backtracking search function (could be used to verify solutions)
+    bool exist(const string& word) {
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                if (backtrack(i, j, word, 0)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+private:
+    bool backtrack(int i, int j, const string& word, int index) {
+        if (index == word.size()) return true;
+        if (i < 0 || i >= rows || j < 0 || j >= cols || board[i][j] != word[index]) {
+            return false;
+        }
+
+        char temp = board[i][j];
+        board[i][j] = '#';  // Mark as visited
+
+        for (auto [di, dj] : directions) {
+            if (backtrack(i + di, j + dj, word, index + 1)) {
+                board[i][j] = temp;
+                return true;
+            }
+        }
+
+        board[i][j] = temp;
+        return false;
+    }
+};
+
+int main() {
+    int rows, cols;
+    cout << "Enter grid rows and columns (e.g., 10 10): ";
+    cin >> rows >> cols;
+
+    WordSearch ws(rows, cols);
+
+    cout << "Enter words to hide (one per line, empty line to finish):\n";
+    cin.ignore();  // Ignore newline from previous input
+
+    string word;
+    while (getline(cin, word)) {
+        if (word.empty()) break;
+        ws.addWord(word);
+    }
+
+    if (ws.generate()) {
+        ws.printBoard();
+    } else {
+        cerr << "Failed to generate word search puzzle." << endl;
+        return 1;
+    }
 
     return 0;
 }
